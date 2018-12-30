@@ -1,0 +1,49 @@
+body {
+	font-family: 'Merriweather', serif;
+	background-color: #212121;
+	color: #DDDDD3;
+}
+
+a {
+	color: #E0DA90;
+}
+
+header {
+	border-bottom: 1px solid #DDDDD3;
+}
+
+.title {
+	color: #E0DA90;
+}
+
+.title > a {
+	text-decoration: none;
+}
+
+.title > a:hover {
+	text-decoration: underline;
+}
+
+.highlight {
+	color: #E0DA90;
+}
+
+.content {
+	width: 65%;
+	float: left;
+}
+
+.fab {
+	font-size: 1.5em;
+	color: #E0DA90;
+}
+
+.social-links {
+	list-style-type: none;
+	float: right;
+	margin: 20px;
+}
+
+.social-links > li {
+	margin: 30px 0;
+}
