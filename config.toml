@@ -1,0 +1,13 @@
+baseURL = "http://gysddn.github.io"
+languageCode = "en-us"
+title = "🂡"
+theme = "archie-min"
+[menu]
+[[menu.main]]
+  identifier = 'resume'
+  name = 'résumé'
+  url = '/resume'
+[[menu.main]]
+  identifier = 'github'
+  name = 'github'
+  url = 'https://github.com/gysddn'
