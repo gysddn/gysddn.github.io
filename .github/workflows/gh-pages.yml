@@ -20,7 +20,7 @@ jobs:
           extended: true
 
       - name: Build Website
-        run: hugo -D
+        run: hugo
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
