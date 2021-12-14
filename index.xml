@@ -5,8 +5,7 @@
     <link>https://gysddn.github.io/</link>
     <description>Recent content on 🂡</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    <lastBuildDate>Tue, 23 Nov 2021 18:32:48 +0300</lastBuildDate><atom:link href="https://gysddn.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <language>en-us</language><atom:link href="https://gysddn.github.io/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Resume</title>
       <link>https://gysddn.github.io/resume/</link>
@@ -17,15 +16,6 @@
 Experiences Projects 32-bit Operating System for x86 os Oct 2021 - Ongoing
  Building the kernel. Building a new Standard C Library along the way.  Internships Linux Developer at Milis Linux Jun 2019 - Aug 2019
  Contributed to the package manager. Written the documentation. Developed utilities for developers/packagers. Packaged programs for repositories. Tested the software.  Software Developer at Finartz Aug 2021 - Oct 2021</description>
-    </item>
-    
-    <item>
-      <title>New</title>
-      <link>https://gysddn.github.io/posts/lorem/</link>
-      <pubDate>Tue, 23 Nov 2021 18:32:48 +0300</pubDate>
-      
-      <guid>https://gysddn.github.io/posts/lorem/</guid>
-      <description>Example Title &amp;ldquo;Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</description>
     </item>
     
   </channel>
