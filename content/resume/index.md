@@ -1,7 +1,7 @@
 ---
 title: "Resume"
 date: 2021-11-23T20:02:42+03:00
-draft: true
+draft: false
 ---
 
 ## Education
