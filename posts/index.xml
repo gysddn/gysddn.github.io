@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on 🂡</title>
+    <link>https://gysddn.github.io/posts/</link>
+    <description>Recent content in Posts on 🂡</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 20 May 2023 13:04:49 +0300</lastBuildDate><atom:link href="https://gysddn.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Booting with Limine</title>
+      <link>https://gysddn.github.io/posts/booting/</link>
+      <pubDate>Sat, 20 May 2023 13:04:49 +0300</pubDate>
+      
+      <guid>https://gysddn.github.io/posts/booting/</guid>
+      <description>Let&amp;rsquo;s boot the operating system with a simpler bootloader!
+A couple of days ago, I was informed of a modern and simpler bootloader named &amp;ldquo;Limine&amp;rdquo; and I just wanted to give it a go. This is the implementation of the boot protocol with the same name. It aims to do what conventional ones do but in a simpler way, or so I&amp;rsquo;m told.
+Originally, the project was booting on BIOS using grub2.</description>
+    </item>
+    
+  </channel>
+</rss>

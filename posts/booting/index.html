@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html><head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Booting with Limine - 🂡</title><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Let&rsquo;s boot the operating system with a simpler bootloader!
+A couple of days ago, I was informed of a modern and simpler bootloader named &ldquo;Limine&rdquo; and I just wanted to give it a go. This is the implementation of the boot protocol with the same name. It aims to do what conventional ones do but in a simpler way, or so I&rsquo;m told.
+Originally, the project was booting on BIOS using grub2." />
+	<meta property="og:image" content=""/>
+	<meta property="og:title" content="Booting with Limine" />
+<meta property="og:description" content="Let&rsquo;s boot the operating system with a simpler bootloader!
+A couple of days ago, I was informed of a modern and simpler bootloader named &ldquo;Limine&rdquo; and I just wanted to give it a go. This is the implementation of the boot protocol with the same name. It aims to do what conventional ones do but in a simpler way, or so I&rsquo;m told.
+Originally, the project was booting on BIOS using grub2." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://gysddn.github.io/posts/booting/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-05-20T13:04:49+03:00" />
+<meta property="article:modified_time" content="2023-05-20T13:04:49+03:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Booting with Limine"/>
+<meta name="twitter:description" content="Let&rsquo;s boot the operating system with a simpler bootloader!
+A couple of days ago, I was informed of a modern and simpler bootloader named &ldquo;Limine&rdquo; and I just wanted to give it a go. This is the implementation of the boot protocol with the same name. It aims to do what conventional ones do but in a simpler way, or so I&rsquo;m told.
+Originally, the project was booting on BIOS using grub2."/>
+
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Sans&display=swap" rel="stylesheet">
+
+	
+	<link rel="stylesheet" type="text/css" media="screen" href="https://gysddn.github.io/css/main.d4cd1d29ca2bd46fdc77bdb9f6733e9a224f2caadcd6dd8be95308a59b3322da.css" />
+
+	
+</head>
+<body>
+        <div class="content"><header>
+	<div class="main">
+		<a href="https://gysddn.github.io">🂡 Home</a>
+	</div>
+	<nav>
+		
+		<a href="https://github.com/gysddn">github</a>
+		
+		<a href="/resume">résumé</a>
+		
+	</nav>
+</header>
+
+<main>
+	<article>
+		<div class="title">
+			<h1 class="title">Booting with Limine</h1>
+			<div class="meta">Posted on May 20, 2023</div>
+		</div>
+		
+
+		<section class="body">
+			<p>Let&rsquo;s boot the operating system with a simpler bootloader!</p>
+<p>A couple of days ago, I was informed of a modern and simpler bootloader named &ldquo;Limine&rdquo; and I just wanted
+to give it a go. This is the implementation of the boot protocol with the same name. It aims to do
+what conventional ones do but in a simpler way, or so I&rsquo;m told.</p>
+<p>Originally, the project was booting on BIOS using grub2. It had a simple multiboot(v1) header, and the
+rest was done with grub-mkrescue.</p>
+<p>I would like to change two things:</p>
+<ul>
+<li>Switch to UEFI</li>
+<li>And use Limine bootloader</li>
+</ul>
+<h3 id="switching-to-uefi">Switching to UEFI</h3>
+<p>My way to test the operating system is qemu. Qemu uses bios, there is no support for UEFI.
+But it does allow you to specify the bios firmware, so all one has to do is to just use a UEFI
+bios firmware when running qemu. As for where to find a such firmware, there is project named
+OVMF (Open Virtual Machine Firmware) that develops firmwares to enable UEFI in virtual devices.
+These firmware files are in the related packages and can be used with qemu.</p>
+<p>Let&rsquo;s install that package and find the file:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo pacman -S edk2-ovmf
+pacman -Ql edk2-ovmf | grep OVMF.md
+</code></pre></div><p>This will output something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">edk2-ovmf /usr/share/edk2/ia32/OVMF.fd
+edk2-ovmf /usr/share/edk2/x86/OVMF.fd
+</code></pre></div><p>There are to files, one for x86 and x86-64. The approrpiate one can now be used with the &ldquo;-bios&rdquo;
+flag:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">qemu-system-x86_64 -bios /usr/share/edk2/x86/OVMF.fd  -hda disk.img
+</code></pre></div><h3 id="using-limine-bootloader">Using Limine Bootloader</h3>
+<p>The kernel uses multiboot (v1) and is able to boot with that. Since Limine also supports this protocol
+it must be possible to try and boot it without making any changes to it.</p>
+<p>While using grub, the &ldquo;grub-mkrescue&rdquo; took care of creating the iso from a sysroot directory, now
+with Limine this process is going to be less automated.</p>
+<p>UEFI requires an ESP partition formatted with FAT32 to be present in the disk with a GPT table. This partition is where
+the bootloader resides, the UEFI will find the appropriate bootloader for the current architecture inside
+the &ldquo;EFI/BOOT&rdquo; folder. For example the file &ldquo;BOOTX64.efi&rdquo; will be loaded and executed by UEFI on a
+x86-64 machine, which is the file we will put in there, and it is the prepared UEFI executable file of Limine.</p>
+<p>Let&rsquo;s start by creating an empty image to work on:</p>
+<pre><code>dd if=/dev/zero of=disk.img bs=1M count=16
+</code></pre><p>This command will copy 16 Megabyte of zeros into a file named disk.img. It&rsquo;s just zeros.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">hexdump disk.img
+</code></pre></div><p>Will output:</p>
+<pre><code>0000000 0000 0000 0000 0000 0000 0000 0000 0000
+*
+1000000
+</code></pre><p>Unrelated to the task at hand, but since that above is the case, it&rsquo;s all zeroes. There is a better way
+to create this image, so I&rsquo;m told by a nice fella. Instead of copying zeroes, you can just move the
+cursor to an offset when writing and all that&rsquo;s preceding it will just be holes and information will
+be <em>represented</em> by a metadata rather than physical data. This will be a sparse file and it&rsquo;s way more
+efficient. To do that is simple, don&rsquo;t copy anything, just seek the cursor at the offset you desire.</p>
+<pre><code>dd if=/dev/zero of=disk.img bs=1M count=0 seek=16
+</code></pre><p>Same effect.</p>
+<p>After that, this hypothetical disk needs to be formatted with a GPT table. It is possible to do this
+in many ways, one of them is using &ldquo;fdisk&rdquo;, one can just open the file like a device:</p>
+<pre><code>fdisk disk.img
+</code></pre><p>The program will open up a prompt to work on the image.</p>
+<pre><code>Welcome to fdisk (util-linux 2.37.2).
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Device does not contain a recognized partition table.
+Created a new DOS disklabel with disk identifier 0x5bbd477f.
+Command (m for help):
+</code></pre><p>First off, it needs to have a GPT partition table. Then it needs the boot partition itself to
+be created and set to &ldquo;EFI System&rdquo;. The command flow is &lsquo;g&rsquo;, &lsquo;n&rsquo; (entering to all defaults will suffice)
+and &rsquo;t' with 1. Once these steps are completed, there is going to be one partition that will hold everything
+as well as the bootloader itself.</p>
+<p>That&rsquo;s the partition table, command &lsquo;p&rsquo; will print it:</p>
+<pre><code>Disk disk.img: 16 MiB, 16777216 bytes, 32768 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: FE25C548-D7FF-D043-B3C3-48833C2F40EA
+
+Device     Start   End Sectors Size Type
+disk.img1   2048 32734   30687  15M EFI System
+</code></pre><p>The disk now has its partition table configured. It is possible to move on after this point, our firmware
+will be able to boot if the rest of the stages are complete as well, but just in case, if at one point
+this image gets put into a real device to boot it&rsquo;s going to need the stage 2 deployed in it. This has to do
+with the limitations of how BIOS operates but all there is to do is to let &ldquo;limine-deploy&rdquo; embed stage 2
+into the image.</p>
+<pre><code>git clone --depth 1 -b v4.x-branch-binary https://github.com/limine-bootloader/limine.git
+make -C limine
+./limine/limine-deploy disk.img
+</code></pre><p>Next step is to make a filesystem on the ESP partition, particularly FAT32. To do this, the &ldquo;mkfs.fat&rdquo; tool
+will be used but this tool requires a device to operate on. Let&rsquo;s setup a loopback device:</p>
+<pre><code>sudo losetup -Pf --show disk.img
+</code></pre><p>This will setup a loopback device with its partitions, it will find the first available loopback device
+to use and will print the name of it, something like &ldquo;/dev/loop1&rdquo;.</p>
+<p>The disk and so the device has exactly one parition, so when the device is up there will be two files:</p>
+<pre><code>/dev/loop1
+/dev/loop1p1
+</code></pre><p>Let&rsquo;s make the filesystem on /dev/loop1p1:</p>
+<pre><code>sudo mkfs.fat -F 32 /dev/loop1p1
+</code></pre><p>With that done, the filesystem will be ready. That means one can freely mount it and use it like a normal
+FAT32 filesystem. And in fact, this needs to be done. It is time to put the files in there.</p>
+<p>First to mount the device partition:</p>
+<pre><code>sudo mount /dev/loop1p1 /mnt
+</code></pre><p>The first file needed is of course the bootloader executable BOOTX64.efi, it needs to go under EFI/BOOT.
+This file is in the cloned git repository. Let&rsquo;s create those directories and put it in there:</p>
+<pre><code>mkdir -p /mnt/EFI/BOOT
+cp limine/BOOTX64.efi /mnt/EFI/BOOT
+</code></pre><p>The other files needed files are the kernel itself and limine.cfg file. Optionally, limine.sys file
+for the same reason &ldquo;limine-deploy&rdquo; was used.</p>
+<p>Since everything is simple, so will be the configuration file.</p>
+<pre><code>TIMEOUT=3
+
+:OS
+PROTOCOL=multiboot1
+KERNEL_PATH=boot:///kernel
+</code></pre><p>Here, timeout is the time before Limine boots the default selection, &ldquo;:OS&rdquo; is the name of the entry,
+protocol is the booting protocol, and kernel path is where the kernel executable is, here &ldquo;boot:///&rdquo; is
+the partition where boot files are.</p>
+<pre><code>sudo cp -v ${KERNEL_PATH} ${LIMINE_CFG} limine.sys mnt/
+</code></pre><p>This marks the end of this process. All there is left to do is to &lsquo;sync&rsquo; the changes to the devices, unmount and
+detach the loopback device. The file &ldquo;disk.img&rdquo; is now a bootable image containing the Limine bootloader
+and a multiboot(v1) compliant kernel.</p>
+<h3 id="automating-the-process">Automating The Process</h3>
+<p>It is now time to automate this process of image creation. But there has to be a couple of small changes.</p>
+<p>First of all, in a script, the interactive mode isn&rsquo;t really a good fit. So instead of fdisk, parted is the
+better option. Also instead of operating on the same output image, it makes more sense to me to work on a
+temporary file and when everything is successful, it&rsquo;s feasible to just copy it. Pretty much everything else
+is the same expect for some messages and variables.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e"># Define the ANSI escape sequence for red color and reset</span>
+RED<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;\033[0;31m&#39;</span>
+GREEN<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;\033[0;32m&#39;</span>
+RESET<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;\033[0m&#39;</span>
+
+readonly SCRIPT_DIR<span style="color:#f92672">=</span><span style="color:#66d9ef">$(</span>dirname <span style="color:#e6db74">&#34;</span>$0<span style="color:#e6db74">&#34;</span><span style="color:#66d9ef">)</span>
+readonly BUILD_DIR<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>SCRIPT_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/../build&#34;</span>
+readonly KERNEL_PATH<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>BUILD_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/kernel/kernel&#34;</span>
+readonly IMG_FILE<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>BUILD_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/os.iso&#34;</span>
+readonly LIMINE_DIR<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>BUILD_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/limine&#34;</span>
+readonly LIMINE_CFG<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>BUILD_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/../boot/limine.cfg&#34;</span>
+readonly TMP_IMG<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;/tmp/disk.iso&#34;</span>
+
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> ! -e $KERNEL_PATH <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Kernel file could not be found!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Creating the image...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+dd <span style="color:#66d9ef">if</span><span style="color:#f92672">=</span>/dev/zero of<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> bs<span style="color:#f92672">=</span>1M count<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> seek<span style="color:#f92672">=</span><span style="color:#ae81ff">64</span>
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not create the tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Preparing the image...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+<span style="color:#75715e"># Create a GPT partition table.</span>
+parted -s <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> mklabel gpt
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not create the partition table on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+<span style="color:#75715e"># Create an ESP partition that spans the whole disk.</span>
+parted -s <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> mkpart ESP fat32 2048s 100%
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not format the partition on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+parted -s <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> set <span style="color:#ae81ff">1</span> esp on
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not set the partition as ESP on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Preparing the limine...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> ! -d <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  git clone --branch<span style="color:#f92672">=</span>v4.x-branch-binary --depth<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> https://github.com/limine-bootloader/limine.git <span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span>
+  make -C <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Depolying limine on the image...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+<span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span>/limine-deploy <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span>
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not deploy limine on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Setting up the loopback device...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+readonly USED_LOOPBACK<span style="color:#f92672">=</span><span style="color:#66d9ef">$(</span>sudo losetup -Pf --show <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span><span style="color:#66d9ef">)</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Formatting the boot partition...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+sudo mkfs.fat -F <span style="color:#ae81ff">32</span> <span style="color:#e6db74">${</span>USED_LOOPBACK<span style="color:#e6db74">}</span>p1
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Mounting the boot partition...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+mkdir -p img_mount
+sudo mount <span style="color:#e6db74">${</span>USED_LOOPBACK<span style="color:#e6db74">}</span>p1 img_mount
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Setting up files...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+sudo mkdir -p img_mount/EFI/BOOT
+sudo cp -v <span style="color:#e6db74">${</span>KERNEL_PATH<span style="color:#e6db74">}</span> <span style="color:#e6db74">${</span>LIMINE_CFG<span style="color:#e6db74">}</span> limine/limine.sys img_mount/
+sudo cp -v limine/BOOTX64.EFI img_mount/EFI/BOOT/
+
+<span style="color:#75715e"># Sync system cache and unmount partition and loopback device.</span>
+sync
+sudo umount img_mount
+sudo losetup -d <span style="color:#e6db74">${</span>USED_LOOPBACK<span style="color:#e6db74">}</span>
+
+cp -v <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> <span style="color:#e6db74">${</span>IMG_FILE<span style="color:#e6db74">}</span>
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Done!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+</code></pre></div><p>As it is now, it can be executable by a bash subprocess, like:</p>
+<pre><code>bash make_iso.sh
+</code></pre><p>But it needs to be integrated with cmake, since that&rsquo;s how my build system works. To do this, there
+needs to be a new custom target that will be execute this script every time the &ldquo;kernel&rdquo; target is updated. And
+cmake needs to know about what it generates so that other targets can DEPEND on it.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-cmake" data-lang="cmake">add_custom_target(<span style="color:#e6db74">limine-image</span> <span style="color:#e6db74">ALL</span>
+    <span style="color:#e6db74">COMMAND</span> <span style="color:#e6db74">&#34;${CMAKE_COMMAND}&#34;</span> <span style="color:#e6db74">-E</span> <span style="color:#e6db74">env</span> <span style="color:#e6db74">&#34;OS_BUILD_DIR=${CMAKE_BINARY_DIR}&#34;</span> <span style="color:#e6db74">&#34;LIMINE_CFG=${CMAKE_CURRENT_SOURCE_DIR}/boot/limine.cfg&#34;</span> <span style="color:#e6db74">&#34;${CMAKE_CURRENT_SOURCE_DIR}/meta/make_iso.sh&#34;</span>
+    <span style="color:#e6db74">BYPRODUCTS</span> <span style="color:#e6db74">&#34;${CMAKE_BINARY_DIR}/limine_image.iso&#34;</span>
+    <span style="color:#e6db74">USES_TERMINAL</span>
+    <span style="color:#e6db74">DEPENDS</span> <span style="color:#e6db74">kernel</span>
+)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>This target depends on the &ldquo;kernel&rdquo; target and creates a by product named &ldquo;limine_image.iso&rdquo; by
+executing the &ldquo;make_iso.sh&rdquo; script.</p>
+<p>As can be seen here, when executing the script a couple of environment variables also has been passed, so
+that some parameters can be passed from cmake down to the script, this gives a bit more flexibility. Script has
+also been updated to use these.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e"># Define the ANSI escape sequence for red color and reset</span>
+RED<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;\033[0;31m&#39;</span>
+GREEN<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;\033[0;32m&#39;</span>
+RESET<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;\033[0m&#39;</span>
+
+readonly SCRIPT_DIR<span style="color:#f92672">=</span><span style="color:#66d9ef">$(</span>dirname <span style="color:#e6db74">&#34;</span>$0<span style="color:#e6db74">&#34;</span><span style="color:#66d9ef">)</span>
+readonly KERNEL_PATH<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>OS_BUILD_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/kernel/kernel&#34;</span>
+readonly IMG_FILE<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>OS_BUILD_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/limine_image.iso&#34;</span>
+readonly LIMINE_DIR<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>OS_BUILD_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">/limine&#34;</span>
+readonly TMP_IMG<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;/tmp/disk.iso&#34;</span>
+
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> ! -e $KERNEL_PATH <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Kernel file could not be found!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Creating the image...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+dd <span style="color:#66d9ef">if</span><span style="color:#f92672">=</span>/dev/zero of<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> bs<span style="color:#f92672">=</span>1M count<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> seek<span style="color:#f92672">=</span><span style="color:#ae81ff">64</span>
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not create the tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Preparing the image...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+<span style="color:#75715e"># Create a GPT partition table.</span>
+parted -s <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> mklabel gpt
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not create the partition table on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+<span style="color:#75715e"># Create an ESP partition that spans the whole disk.</span>
+parted -s <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> mkpart ESP fat32 2048s 100%
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not format the partition on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+parted -s <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> set <span style="color:#ae81ff">1</span> esp on
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not set the partition as ESP on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Preparing the limine...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> ! -d <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  git clone --branch<span style="color:#f92672">=</span>v4.x-branch-binary --depth<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> https://github.com/limine-bootloader/limine.git <span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span>
+  make -C <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Depolying limine on the image...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+<span style="color:#e6db74">${</span>LIMINE_DIR<span style="color:#e6db74">}</span>/limine-deploy <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span>
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">[</span> $? -ne <span style="color:#ae81ff">0</span> <span style="color:#f92672">]</span>; <span style="color:#66d9ef">then</span>
+  printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>RED<span style="color:#e6db74">}</span><span style="color:#e6db74">Could not deploy limine on tmp image file!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+  exit 1;
+<span style="color:#66d9ef">fi</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Setting up the loopback device...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+readonly USED_LOOPBACK<span style="color:#f92672">=</span><span style="color:#66d9ef">$(</span>sudo losetup -Pf --show <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span><span style="color:#66d9ef">)</span>
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Formatting the boot partition...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+sudo mkfs.fat -F <span style="color:#ae81ff">32</span> <span style="color:#e6db74">${</span>USED_LOOPBACK<span style="color:#e6db74">}</span>p1
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Mounting the boot partition...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+mkdir -p img_mount
+sudo mount <span style="color:#e6db74">${</span>USED_LOOPBACK<span style="color:#e6db74">}</span>p1 img_mount
+
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Setting up files...</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+sudo mkdir -p img_mount/EFI/BOOT
+sudo cp -v <span style="color:#e6db74">${</span>KERNEL_PATH<span style="color:#e6db74">}</span> <span style="color:#e6db74">${</span>LIMINE_CFG<span style="color:#e6db74">}</span> <span style="color:#e6db74">${</span>OS_BUILD_DIR<span style="color:#e6db74">}</span>/limine/limine.sys img_mount/
+sudo cp -v <span style="color:#e6db74">${</span>OS_BUILD_DIR<span style="color:#e6db74">}</span>/limine/BOOTX64.EFI img_mount/EFI/BOOT/
+
+<span style="color:#75715e"># Sync system cache and unmount partition and loopback device.</span>
+sync
+sudo umount img_mount
+sudo losetup -d <span style="color:#e6db74">${</span>USED_LOOPBACK<span style="color:#e6db74">}</span>
+
+cp -v <span style="color:#e6db74">${</span>TMP_IMG<span style="color:#e6db74">}</span> <span style="color:#e6db74">${</span>IMG_FILE<span style="color:#e6db74">}</span>
+printf <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>GREEN<span style="color:#e6db74">}</span><span style="color:#e6db74">Done!</span><span style="color:#e6db74">${</span>RESET<span style="color:#e6db74">}</span><span style="color:#e6db74">\n&#34;</span>;
+</code></pre></div><p>And this is the end. Now every time the build command is executed, for example &ldquo;ninja&rdquo;, it will
+call this script when there is a change to the kernel executable and this script will build
+the image with the Limine bootloader in it.</p>
+
+		</section>
+
+		<div class="post-tags">
+			
+			
+			
+		</div>
+	</article>
+</main>
+<footer>
+  <hr> <a href="https://github.com/athul/archie">Archie Theme</a> | Built with <a href="https://gohugo.io">Hugo</a>
+</footer>
+</div>
+    </body>
+</html>
